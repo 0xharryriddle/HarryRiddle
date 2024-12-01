@@ -20,8 +20,14 @@ interface NavProps {
     underlineStyles?: string
 }
 
+const getParentPath = (path: string) => {
+    const arrayNamePath = path.split("/");
+    return `/${arrayNamePath[1]}`;
+};
+
 const Nav = ({ containerStyles, linkStyles, underlineStyles }: NavProps) => {
     const path = usePathname();
+    const parentPath = getParentPath(path!);
     return (
         <nav className={`${containerStyles}`}>
             {links.map((link, index) => {
@@ -29,12 +35,12 @@ const Nav = ({ containerStyles, linkStyles, underlineStyles }: NavProps) => {
                     <Link
                         href={link.path}
                         key={index}
-                        className={`${`capitalize ${linkStyles}`} ${link.path === path
+                        className={`${`capitalize ${linkStyles}`} ${link.path === parentPath
                             ? `font-bold`
                             : "hover:text-blue hover:font-bold"
                             }`}
                     >
-                        {link.path === path && (
+                        {link.path === parentPath && (
                             <motion.span
                                 initial={{ y: "-100%" }}
                                 animate={{ y: 0 }}
@@ -47,7 +53,7 @@ const Nav = ({ containerStyles, linkStyles, underlineStyles }: NavProps) => {
                     </Link>
                 );
             })}
-        </nav>
+        </nav >
     );
 };
 

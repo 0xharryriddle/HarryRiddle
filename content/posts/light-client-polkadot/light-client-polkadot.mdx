@@ -1,0 +1,200 @@
+---
+title: Light Client in Polkadot Network
+description: Light Client - Substrate Connect provides a secure, minimalistic approach
+  for Decentralized Applications on Polkadot, bypassing the need for full node installations.
+author: Harry Riddle
+publication: Harry’s personal website
+date: November 29, 2024
+---
+
+## Substrate Connect
+
+### Introduction
+
+Blockchain interactions require communication with a Peer-to-Peer (P2P) network to validate transactions and generate new blocks. Polkadot, like other blockchains, relies on a network of nodes that powers its consensus mechanism.
+
+![align=center&caption=Peer-to-Peer Network&sourceTitle= Polkadot's Architecture&sourceURL=https://softtech-blog.weebly.com/outline-of-polkadot-architecture](https://d3lkc3n5th01x7.cloudfront.net/wp-content/uploads/2022/08/09222628/Polkadot-node-setup.png)
+
+To communicate between the decentralized application and a network node in Polkadot is through a JSON RPC protocol. Typically, there are 2 main ways to do this:
+
+- **User-Controlled Nodes:** The Dapp (decentralized application) connects to a node client which the users have installed and run on their machine. These nodes are extremely secure because the users fully control it, but to install and maintain them are quietly complicated as they must be active 24/7 and connect with network rapidly.
+- **Publicly-Accessible Nodes:** There are several third-parties or platforms providing a publicly-accessible node client. These nodes are available every time when users need so they are more convenient to interact. However, their drawbacks are insecure and centralized because they are controlled by their owner.
+
+**[Substrate Connect](https://substrate.io/substrate-connect/)**, on the other hand, is introduced for decentralized application to minimally connect to Polkadot network instead of utilizing a centralized RPC node but still securely.
+
+### Substate Connect & The perfect alternative for Substrate: Smoldot
+
+Firstly, **[Substrate](https://github.com/paritytech/substrate)** was ever one of the core repositories in the **[Polkadot SDK](https://github.com/paritytech/polkadot-sdk)** to help everyone to build the unique Blockchain on the Polkadot. However, it was merged with two repositories Cumulus and Polkadot into a new repository: **[the Polkadot SDK](https://github.com/paritytech/polkadot-sdk)**. From here, **[Smoldot](https://github.com/smol-dot/smoldot)** is introduced as an alternative client of **[Substrate](https://github.com/paritytech/substrate)**-based chain. 
+
+**Smoldot** validates the submitted transactions (from users) before sending to full nodes (centralized nodes) by itself to add those transactions to the transaction pool. **Substrate Connect** provides the infrastructure necessary to run **light clients** directly in the browsers. By default, **Substrate Connect** runs in the browser independently with each browser tab, install the browser extension to enable resource sharing among browser tabs. With **Substrate Connect**, there’s no need for a centralized RPC node; it operates like a bridge, running **[Smoldot](https://github.com/smol-dot/smoldot)** in the browser extension making it possible for every tabs or website to sync with the chain.
+
+Abstractly, **Smoldot** is used to interact with the **relay chain** or a **parachain**, it always needs to sync with the relay chain. What about for a parachain? The parachain's finalized state is guaranteed on the relay chain. To verify whether a relay chain block is finalized, the light client needs to know the **elected validators** from the **GRANDPA** protocol. **[GRANDPA](https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf) (GHOST-based Recursive ANcestor Deriving Prefix Agreement)** is the finality gadget that is implemented for the relay chain. The **Polkadot Host** uses the **GRANDPA** finality protocol to finality blocks. The condition for Smoldot to set the block finalized is that more than **2/3** of the validators nodes voted **FOR** on the block and the signatures are correct. Polkadot uses **NPoS (Nominated Proof-of-Stake)** as its mechanism for selecting the validator set. Changes authority set or validator set are crucial to track for a node who tries to sync with the relay chain in order to verify justifications. The speed up way to sync which its proposed is **[warp sync](https://spec.polkadot.network/chap-networking#sect-msg-warp-sync)**. Instead of downloading the entire chain as the **[full sync protocol](https://spec.polkadot.network/chap-sync#id-full-sync)** or downloading the block header history and validating the authority set changes like **[fast sync](https://spec.polkadot.network/chap-sync#sect-sync-fast)** , it only downloads the block headers where authority set changes occurred and this things are called **fragments**. These fragments form the arrays and concat with the boolean value indicating whether the warp sync has been completed as the below format:
+
+<div className="flex flex-col items-center space-y-2">
+  <span className="text-4xl">$$ P = (f_{x}...f_{y},c)$$</span>
+  <div className="w-auto flex flex-col justify-center">
+    <span>**$$f_{x}...f_{y}$$**:  is an array consisting of warp sync fragments.</span>
+    <span>**$$c$$**:  is the boolean indicates whether the warp sync has been completed.</span>
+  </div>
+</div>
+
+When it is up to date with the latest **GRANDPA**, Smoldot will start syncing with the chain similar to a full node. Smoldot only retrieve new block headers and verify by verifying the **authenticity** of those blocks. In addition, Polkadot also uses the **BABE protocol** to produce the new blocks. **BABE (Blind Assignmnent for Blockchain Extension)** is the block production mechanism that runs between the validator nodes and determines the author or the owner of new blocks. After Smoldot verifies th block header, whether the author of the block was selected by **BABE** protocol. Practically, BABE separate into many epochs, with each epochs being divided into **slots**. All slots in each epoch are sequentially indexed starting from 0. At the beginning of each epoch, the BABE needs to run the **[Block Production Lottery](https://spec.polkadot.network/sect-block-production#algo-block-production-lottery)** to find out which slots it should produce a block and gossip to the other block producers.
+
+Finally, Smoldot verifies the **consensus** and the finality by tracking consecutively the authority set. The authority set will be obtained through the runtime when it updates the chain  it acquires subsequent changes from the block headers. 
+
+### What does Smoldot need to run ?
+
+In order to start syncing with a chain, the Smoldot requires the list of information called **[chainspec](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/src/chain_spec.rs#L18-L34)**. A chain specification is the description of everything related the chain being desired connected and required for the client to successfully interact with that chain. The chainspec only consists of **[clientspec](https://github.com/paritytech/smoldot/blob/main/src/chain_spec/structs.rs#L33)** that look like as the following structure:
+
+```rs showLineNumbers
+...
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub(super) struct ClientSpec {
+    pub(super) name: String,
+    pub(super) id: String,
+
+    #[serde(default)]
+    pub(super) chain_type: ChainType,
+
+    #[serde(default)]
+    pub(super) code_substitutes: HashMap<u64, HexString, fnv::FnvBuildHasher>,
+    pub(super) boot_nodes: Vec<String>,
+    pub(super) telemetry_endpoints: Option<Vec<(String, u8)>>,
+    pub(super) protocol_id: Option<String>,
+    
+    #[serde(default = "Default::default", skip_serializing_if = "Option::is_none")]
+    pub(super) fork_id: Option<String>,
+    
+    #[serde(default = "Default::default", skip_serializing_if = "Option::is_none")]
+    pub(super) block_number_bytes: Option<u8>,
+    pub(super) properties: Option<Box<serde_json::value::RawValue>>,
+    pub(super) fork_blocks: Option<Vec<(u64, HashHexString)>>,
+    pub(super) bad_blocks: Option<HashSet<HashHexString, FnvBuildHasher>>,
+    
+    #[serde(default, skip_serializing)]
+    #[allow(unused)]
+    pub(super) consensus_engine: (),
+    pub(super) genesis: Genesis,
+    pub(super) light_sync_state: Option<LightSyncState>,
+    
+    #[serde(flatten)]
+    pub(super) parachain: Option<ChainSpecParachain>,
+}
+...
+```
+
+From the chainspec, the **[chain information](https://github.com/Daanvdplas/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/src/chain/chain_information.rs#L118-L129)** is built. As we can see in the code, the chain information is all the crucial information Smoldot requires to verify the consensus and finality. It will be constructed from either:
+
+  - The genesis state
+  - The **[checkpoint](https://github.com/Daanvdplas/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/src/chain_spec/light_sync_state.rs#L65)**
+  - From the database
+
+As a result, the chain information provides the starting authority set for the warp sync process.
+
+```rs showLineNumbers {4, 7, 10} highlight{red}
+#[derive(Debug, Clone)]
+pub struct ChainInformation {
+    /// Header of the highest known finalized block.
+    pub finalized_block_header: header::Header,
+
+    /// Extra items that depend on the consensus engine.
+    pub consensus: ChainInformationConsensus,
+
+    /// Extra items that depend on the finality engine.
+    pub finality: ChainInformationFinality,
+}
+```
+However, to sync with a chain it needs much more information like that. It requires the information from other peers and therefore needs to join the peer-to-peer network.
+
+### Networking
+
+![size=medium&caption=Networking Service&alt=Networking Service&sourceTitle=Smoldot: Hello world!&sourceURL=https://hackmd.io/@s_iGZLIITG6WjSgnFX0pcg/rkmmcvBno](https://i.imgur.com/5LcReWd.png)
+
+First of all, in order to connect to other nodes Smoldot needs the **[networking service](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/bin/light-base/src/network_service.rs#L18-L37)**. It's responsible to try stay connected as much as possible to the nodes of the peer-to-peer network of the chain and maintain open substreams with them in order to send out requests and notifications. The network service will create on background task for each active connection. There are 3 background tasks, the network service needs to start:
+
+  - Process the network service (main task). **[Source code](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/bin/light-base/src/network_service.rs#L282)**
+```rs showLineNumbers
+(config.tasks_executor)(
+  "network-service".into(),
+  Box::pin({
+      let shared = shared.clone();
+      let future = background_task(shared, event_senders);
+
+      let (abortable, abort_handle) = future::abortable(future);
+      abort_handles.push(abort_handle);
+      abortable.map(|_| ())
+  }),
+);
+```
+  - Network discovery (done through a separate task). **[Source code](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/bin/light-base/src/network_service.rs#L296)**
+```rs showLineNumbers
+(config.tasks_executor)(
+  "network-discovery".into(),
+  Box::pin({
+      let shared = shared.clone();
+      let future = async move {
+          let mut next_discovery = Duration::from_secs(5);
+
+          loop {
+              TPlat::sleep(next_discovery).await;
+              next_discovery = cmp::min(next_discovery * 2, Duration::from_secs(120));
+
+              let mut guarded = shared.guarded.lock().await;
+              for chain_index in 0..shared.log_chain_names.len() {
+                  let operation_id = guarded
+                      .network
+                      .start_kademlia_discovery_round(TPlat::now(), chain_index);
+
+                  let _prev_value = guarded
+                      .kademlia_discovery_operations
+                      .insert(operation_id, chain_index);
+                  debug_assert!(_prev_value.is_none());
+              }
+              shared.wake_up_main_background_task.notify(1);
+          }
+      };
+
+      let (abortable, abort_handle) = future::abortable(future);
+      abort_handles.push(abort_handle);
+      abortable.map(|_| ())
+  }),
+);
+```
+  - Process existing connections. **[Source code](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/bin/light-base/src/network_service.rs#L332)**
+  ```rs showLineNumbers
+  (config.tasks_executor)(
+    "connections".into(),
+    Box::pin({
+        let future = async move {
+            let mut connections = stream::FuturesUnordered::new();
+            loop {
+                futures::select! {
+                    new_connec = new_tasks_rx.select_next_some() => {
+                        connections.push(new_connec);
+                    },
+                    () = connections.select_next_some() => {},
+                }
+            }
+        };
+
+        let (abortable, abort_handle) = future::abortable(future);
+        abort_handles.push(abort_handle);
+        abortable.map(|_| ())
+    }),
+  );
+  ```
+#### Processing the networking service
+
+This task is the main task in execution task of Smoldot. It ensures the objective of the Networking Service as we mentioned that Smoldot is always connected to the peer-to-peer network.
+
+#### Network discovery
+
+#### Processing existing connections
+
+### Why use Substrate Connect ?
+
+**Polkadot** is designed with decentralization at its core, following the **Blockchain Trilemma** **(Decentralization**, **Security**, and **Scalability)**. However, most user interfaces connect to the network through centralized nodes, making decentralization challenging. **[Substrate Connect](https://substrate.io/substrate-connect/)** provides a lightweight, decentralized option for DApps to interact securely with Polkadot, lowering complexity for end-users.
+
+

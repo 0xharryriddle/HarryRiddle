@@ -5,7 +5,7 @@ import Repositories from "@/components/projects/Respositories";
 
 const Projects = () => {
     return (
-        <main>
+        <main className="min-h-screen">
             <Repositories />
         </main>
     );

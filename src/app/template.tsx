@@ -19,7 +19,7 @@ const Template = ({ children }: { children: React.ReactNode }) => {
                 variants={variants}
                 initial="hidden"
                 animate="visible"
-                transition={{ type: "linear", delay: 0.2, duration: 0.4 }}
+                transition={{ type: "linear", delay: 0.3, duration: 0.5 }}
             >
                 {children}
             </motion.main>

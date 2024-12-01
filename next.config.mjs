@@ -7,6 +7,20 @@ export default {
     config.plugins.push(new VeliteWebpackPlugin());
     return config;
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "d3lkc3n5th01x7.cloudfront.net",
+        port: "",
+      },
+      {
+        protocol: "https",
+        hostname: "i.imgur.com",
+        port: "",
+      },
+    ],
+  },
 };
 
 class VeliteWebpackPlugin {
