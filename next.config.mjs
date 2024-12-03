@@ -19,6 +19,11 @@ export default {
         hostname: "i.imgur.com",
         port: "",
       },
+      {
+        protocol: "https",
+        hostname: "substackcdn.com",
+        port: "",
+      },
     ],
   },
 };
