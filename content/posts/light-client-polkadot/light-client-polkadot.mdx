@@ -28,19 +28,22 @@ Firstly, **[Substrate](https://github.com/paritytech/substrate)** was ever one o
 
 **Smoldot** validates the submitted transactions (from users) before sending to full nodes (centralized nodes) by itself to add those transactions to the transaction pool. **Substrate Connect** provides the infrastructure necessary to run **light clients** directly in the browsers. By default, **Substrate Connect** runs in the browser independently with each browser tab, install the browser extension to enable resource sharing among browser tabs. With **Substrate Connect**, there’s no need for a centralized RPC node; it operates like a bridge, running **[Smoldot](https://github.com/smol-dot/smoldot)** in the browser extension making it possible for every tabs or website to sync with the chain.
 
-Abstractly, **Smoldot** is used to interact with the **relay chain** or a **parachain**, it always needs to sync with the relay chain. What about for a parachain? The parachain's finalized state is guaranteed on the relay chain. To verify whether a relay chain block is finalized, the light client needs to know the **elected validators** from the **GRANDPA** protocol. **[GRANDPA](https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf) (GHOST-based Recursive ANcestor Deriving Prefix Agreement)** is the finality gadget that is implemented for the relay chain. The **Polkadot Host** uses the **GRANDPA** finality protocol to finality blocks. The condition for Smoldot to set the block finalized is that more than **2/3** of the validators nodes voted **FOR** on the block and the signatures are correct. Polkadot uses **NPoS (Nominated Proof-of-Stake)** as its mechanism for selecting the validator set. Changes authority set or validator set are crucial to track for a node who tries to sync with the relay chain in order to verify justifications. The speed up way to sync which its proposed is **[warp sync](https://spec.polkadot.network/chap-networking#sect-msg-warp-sync)**. Instead of downloading the entire chain as the **[full sync protocol](https://spec.polkadot.network/chap-sync#id-full-sync)** or downloading the block header history and validating the authority set changes like **[fast sync](https://spec.polkadot.network/chap-sync#sect-sync-fast)** , it only downloads the block headers where authority set changes occurred and this things are called **fragments**. These fragments form the arrays and concat with the boolean value indicating whether the warp sync has been completed as the below format:
+Abstractly, **Smoldot** is used to interact with the **relay chain** or a **parachain**, it always needs to sync with the relay chain. What about for a parachain? The parachain's finalized state is guaranteed on the relay chain. To verify whether a relay chain block is finalized, the light client needs to know the **elected validators** from the **GRANDPA** protocol <span className="font-bold reference">[7]</span>. **[GRANDPA](https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf) (GHOST-based Recursive ANcestor Deriving Prefix Agreement)** is the finality gadget that is implemented for the relay chain <span className="font-bold reference">[9]</span>. The **Polkadot Host** uses the **GRANDPA** finality protocol to finality blocks. The condition for Smoldot to set the block finalized is that more than **2/3** of the validators nodes voted **FOR** on the block and the signatures are correct. Polkadot uses **NPoS (Nominated Proof-of-Stake)** as its mechanism for selecting the validator set. Changes authority set or validator set are crucial to track for a node who tries to sync with the relay chain in order to verify justifications. The speed up way to sync which its proposed is **[warp sync](https://spec.polkadot.network/chap-networking#sect-msg-warp-sync)**. Instead of downloading the entire chain as the **[full sync protocol](https://spec.polkadot.network/chap-sync#id-full-sync)** or downloading the block header history and validating the authority set changes like **[fast sync](https://spec.polkadot.network/chap-sync#sect-sync-fast)** , it only downloads the block headers where authority set changes occurred and this things are called **fragments**. These fragments form the arrays and concat with the boolean value indicating whether the warp sync has been completed as the below format:
 
 <div className="flex flex-col items-center space-y-2">
-  <span className="text-4xl">$$ P = (f_{x}...f_{y},c)$$</span>
+    <div className="flex flex-row items-end">
+    <span className="text-4xl self-center">$$ P = (f_{x}...f_{y},c)$$</span>
+    <span className="font-bold reference">[9]</span>
+  </div>
   <div className="w-auto flex flex-col justify-center">
     <span>**$$f_{x}...f_{y}$$**:  is an array consisting of warp sync fragments.</span>
     <span>**$$c$$**:  is the boolean indicates whether the warp sync has been completed.</span>
   </div>
 </div>
 
-When it is up to date with the latest **GRANDPA**, Smoldot will start syncing with the chain similar to a full node. Smoldot only retrieve new block headers and verify by verifying the **authenticity** of those blocks. In addition, Polkadot also uses the **BABE protocol** to produce the new blocks. **BABE (Blind Assignmnent for Blockchain Extension)** is the block production mechanism that runs between the validator nodes and determines the author or the owner of new blocks. After Smoldot verifies th block header, whether the author of the block was selected by **BABE** protocol. Practically, BABE separate into many epochs, with each epochs being divided into **slots**. All slots in each epoch are sequentially indexed starting from 0. At the beginning of each epoch, the BABE needs to run the **[Block Production Lottery](https://spec.polkadot.network/sect-block-production#algo-block-production-lottery)** to find out which slots it should produce a block and gossip to the other block producers.
+When it is up to date with the latest **GRANDPA**, Smoldot will start syncing with the chain similar to a full node. Smoldot only retrieve new block headers and verify by verifying the **authenticity** of those blocks <span className="font-bold reference">[7]</span>. In addition, Polkadot also uses the **BABE protocol** to produce the new blocks. **BABE (Blind Assignmnent for Blockchain Extension)** is the block production mechanism that runs between the validator nodes and determines the author or the owner of new blocks. After Smoldot verifies th block header, whether the author of the block was selected by **BABE** protocol. Practically, BABE separate into many epochs, with each epochs being divided into **slots**. All slots in each epoch are sequentially indexed starting from 0. At the beginning of each epoch, the BABE needs to run the **[Block Production Lottery](https://spec.polkadot.network/sect-block-production#algo-block-production-lottery)** to find out which slots it should produce a block and gossip to the other block producers.
 
-Finally, Smoldot verifies the **consensus** and the finality by tracking consecutively the authority set. The authority set will be obtained through the runtime when it updates the chain  it acquires subsequent changes from the block headers. 
+Finally, Smoldot verifies the **consensus** and the finality by tracking consecutively the authority set. The authority set will be obtained through the runtime when it updates the chain  it acquires subsequent changes from the block headers. <span className="font-bold reference">[7]</span> 
 
 ### What does Smoldot need to run ?
 
@@ -85,13 +88,13 @@ pub(super) struct ClientSpec {
 ...
 ```
 
-From the chainspec, the **[chain information](https://github.com/Daanvdplas/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/src/chain/chain_information.rs#L118-L129)** is built. As we can see in the code, the chain information is all the crucial information Smoldot requires to verify the consensus and finality. It will be constructed from either:
+From the chainspec, the **[chain information](https://github.com/Daanvdplas/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/src/chain/chain_information.rs#L118-L129)** is built. As we can see in the code, the chain information is all the crucial information Smoldot requires to verify the consensus and finality <span className="font-bold reference">[7]</span>. It will be constructed from either:
 
   - The genesis state
   - The **[checkpoint](https://github.com/Daanvdplas/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/src/chain_spec/light_sync_state.rs#L65)**
   - From the database
 
-As a result, the chain information provides the starting authority set for the warp sync process.
+As a result, the chain information provides the starting authority set for the warp sync process <span className="font-bold reference">[7]</span>.
 
 ```rs showLineNumbers {4, 7, 10} highlight{red}
 #[derive(Debug, Clone)]
@@ -110,11 +113,11 @@ However, to sync with a chain it needs much more information like that. It requi
 
 ### Networking
 
-![size=medium&caption=Networking Service&alt=Networking Service&sourceTitle=Smoldot: Hello world!&sourceURL=https://hackmd.io/@s_iGZLIITG6WjSgnFX0pcg/rkmmcvBno](https://i.imgur.com/5LcReWd.png)
+![size=medium&caption=Networking Service&alt=Networking Service&sourceTitle=Smoldot: Hello world!&sourceURL=https://hackmd.io/@s_iGZLIITG6WjSgnFX0pcg/rkmmcvBno](https://i.imgur.com/5LcReWd.png) 
 
-First of all, in order to connect to other nodes Smoldot needs the **[networking service](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/bin/light-base/src/network_service.rs#L18-L37)**. It's responsible to try stay connected as much as possible to the nodes of the peer-to-peer network of the chain and maintain open substreams with them in order to send out requests and notifications. The network service will create on background task for each active connection. There are 3 background tasks, the network service needs to start:
+First of all, in order to connect to other nodes Smoldot needs the **[networking service](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/bin/light-base/src/network_service.rs#L18-L37)**. It's responsible to try stay connected as much as possible to the nodes of the peer-to-peer network of the chain and maintain open substreams with them in order to send out requests and notifications <span className="font-bold reference">[7]</span>. The network service will create on background task for each active connection. There are 3 background tasks, the network service needs to start:
 
-  - Process the network service (main task). **[Source code](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/bin/light-base/src/network_service.rs#L282)**
+  - Process the network service (main task). **[Source code](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/bin/light-base/src/network_service.rs#L282)** 
 ```rs showLineNumbers
 (config.tasks_executor)(
   "network-service".into(),
@@ -185,12 +188,12 @@ First of all, in order to connect to other nodes Smoldot needs the **[networking
     }),
   );
   ```
-#### Processing the networking service
+#### Processing the networking service <span className="font-bold reference">[7]</span>
 
-This task is the main task in execution task of Smoldot. It ensures the objective of the Networking Service as we mentioned that Smoldot is always connected to the peer-to-peer network. The amount of `in-slots` and `out-slots` refer, to the maximum amount of peers that can connect to Smoldot and the maximum amount of peers Smoldot connect to. In the **[full node](https://github.com/paritytech/smoldot/blob/main/bin/full-node/src/run/network_service.rs#L222)**, the number of 
+This task is the main task in execution task of Smoldot. It ensures the objective of the Networking Service as we mentioned that Smoldot is always connected to the peer-to-peer network. The amount of `in-slots` and `out-slots` refer, to the maximum amount of peers that can connect to Smoldot and the maximum amount of peers Smoldot connect to <span className="font-bold reference">[7]</span>. In the **[full node](https://github.com/paritytech/smoldot/blob/main/bin/full-node/src/run/network_service.rs#L222)**, the number of 
 **in_slots** and **out_slots** is 25 for each. However, the **[light node](https://github.com/paritytech/smoldot/blob/main/bin/light-base/src/network_service.rs#L218)** only has 3 for **in_slots** and the **out_slots** is 4. Smoldot uses the **[libp2p protocol](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/src/libp2p/collection.rs#L18-L48)** to coordinates the requests and responses from the connections to Smoldot and vice versa.
 
-- Assign **out_slots**:
+- Assign **out_slots**: <span className="font-bold reference">[7]</span>
 
 Only the maximum number of slots is not reached and that peers have not had a slot yet, the combinations of notifications protocol and peers will be marked as **"desired"**. In addition, it inserts that peer to **out_peers** in **[ChainConfig](https://github.com/paritytech/smoldot/blob/main/src/network/service.rs#L110)**. (The **[assign_out_slot](https://github.com/paritytech/smoldot/blob/main/src/network/service.rs#L1088)** occurs in **[update_round process](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/bin/light-base/src/network_service.rs#L1327)**)
 
@@ -220,7 +223,7 @@ Only the maximum number of slots is not reached and that peers have not had a sl
     }
 ```
 
-- Start new connections with desired peers:
+- Start new connections with desired peers: <span className="font-bold reference">[7]</span>
 
 After all peer assignments, the list of connections should be opened. 
 
@@ -322,9 +325,9 @@ After creating connections, Smoldot perform the connection process in a separate
   let _ = guarded.new_tasks_tx.send(Box::pin(task)).await;
 ```
 
-- The coordinator is updated about the connectivity status with a give peer. It's responsible for distributing it to the right service. 
-
-- Process requests and updates from other services: 
+- The coordinator is updated about the connectivity status with a give peer. It's responsible for distributing it to the right service.  <span className="font-bold reference">[7]</span>
+ 
+- Process requests and updates from other services:  <span className="font-bold reference">[7]</span>
 
 Smoldot pulls the messages that the coordinator has generated in destination to the various connections and sends that messages to the active connections.
 
@@ -353,9 +356,9 @@ Smoldot pulls the messages that the coordinator has generated in destination to 
 
 #### Network discovery
 
-In a peer-to-peer network, it's necessary to have the information of the connection to connect to any given peer, available at any given time. To make this information decentralized, Smoldot need to divide it over all the peers through the **[Kademlia Distributed Hash Tables](https://docs.ipfs.tech/concepts/dht/#distributed-hash-tables-dhts)**. It's a distributed system for mapping keys to values in IPFS. Each information or data in IPFS would be hashed to get its digest and with each data changes the hash digest would be changed as well.
+In a peer-to-peer network, it's necessary to have the information of the connection to connect to any given peer, available at any given time. To make this information decentralized, Smoldot need to divide it over all the peers through the **[Kademlia Distributed Hash Tables](https://docs.ipfs.tech/concepts/dht/#distributed-hash-tables-dhts)** <span className="font-bold reference">[7]</span>. It's a distributed system for mapping keys to values in IPFS. Each information or data in IPFS would be hashed to get its digest and with each data changes the hash digest would be changed as well.
 
-In the **Distributed hash table**, each node was called **[k-buckets](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/src/network/kademlia/kbuckets.rs#L18-L67)**, which make a partial view of the complete list of all the peers in the network. 
+In the **Distributed hash table**, each node was called **[k-buckets](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/src/network/kademlia/kbuckets.rs#L18-L67)**, which make a partial view of the complete list of all the peers in the network. <span className="font-bold reference">[7]</span>
 
 ```rs showLineNumbers
     pub struct KBuckets<K, V, TNow, const ENTRIES_PER_BUCKET: usize> {
@@ -370,9 +373,9 @@ In the **Distributed hash table**, each node was called **[k-buckets](https://gi
 ```
 
 The objective of Network discovery is that sending a **Kademlia** "find node" request to single peer. Moreover, 
-Smoldot based on the **[Kademlia request-response protocol](https://github.com/libp2p/specs/tree/master/kad-dht#rpc-messages)** to build a wire message to get the nodes closest to the parameters. The following steps is to decide which peer it sends the request message:
+Smoldot based on the **[Kademlia request-response protocol](https://github.com/libp2p/specs/tree/master/kad-dht#rpc-messages)** to build a wire message to get the nodes closest to the parameters <span className="font-bold reference">[7]</span>. The following steps is to decide which peer it sends the request message:
 
-- Creating a Sha256 hash digest from the a random created peerID (`local_key`), the target hash.
+- Creating a Sha256 hash digest from the a random created peerID (`local_key`), the target hash. <span className="font-bold reference">[7]</span>
 
 ```rs showLineNumbers
     pub fn new(local_key: K, pending_timeout: Duration) -> Self {
@@ -391,7 +394,7 @@ Smoldot based on the **[Kademlia request-response protocol](https://github.com/l
         }
     }
 ```
-- Finding out the k-buckets for the closest peers
+- Finding out the k-buckets for the closest peers <span className="font-bold reference">[7]</span>
 
 ```rs showLineNumbers
     pub fn get(&self, key: &K) -> Option<&V> {
@@ -415,7 +418,7 @@ Smoldot based on the **[Kademlia request-response protocol](https://github.com/l
     }
 ```
 
-- Hashing the peerIDs of closest peers and sorting its list with ascending order of the log2 distance between the target hash and the k-bucket peer's hash.
+- Hashing the peerIDs of closest peers and sorting its list with ascending order of the log2 distance between the target hash and the k-bucket peer's hash. <span className="font-bold reference">[7]</span>
 
 ```rs showLineNumbers
     pub fn closest_entries(&self, target: &K) -> impl Iterator<Item = (&K, &V)> {
@@ -430,9 +433,9 @@ Smoldot based on the **[Kademlia request-response protocol](https://github.com/l
     }
 ```
 
-- It obtains the peer with the shortest distance and where it already has an established connection.
-
-#### Processing existing connections
+- It obtains the peer with the shortest distance and where it already has an established connection. <span className="font-bold reference">[7]</span>
+ 
+#### Processing existing connections <span className="font-bold reference">[7]</span>
 
 Smoldot has 2 types of connections such as **[TCP](https://docs.libp2p.io/concepts/transports/webtransport/)** connection and **[WebRTC](https://docs.libp2p.io/concepts/transports/webrtc/)** connection.
 
@@ -440,13 +443,13 @@ Smoldot has 2 types of connections such as **[TCP](https://docs.libp2p.io/concep
 
 - In the **Multi stream** WebRTC connection the browser deals with the substreams.
 
-There are two types of substreams:
+There are two types of substreams: <span className="font-bold reference">[7]</span>
 
-1. Notifications:
+1. Notifications: 
     1. Block announcements protocol
     2. GRANDPA announcements protocol (GRANDPA commits)
     3. Transaction announcements protocol (not implemented for Smoldot)
-2. Request-response:
+2. Request-response: 
     1. IPFS id protocol
     2. Sync protocol
     3. Light protocol
@@ -454,13 +457,13 @@ There are two types of substreams:
     5. Sync warp protocol
     6. State protocol
 
-### Synchronization service
+### Synchronization service <span className="font-bold reference">[7]</span>
 
 After, The networking service has been set up it starts a new background task, the **[synchronization service](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/src/sync.rs#L18-L69)**. The objective of the sync service is to do whatever necessary to get and stay up to date with the best and finalized blocks of the chain.
 
 Generally, Smoldot will track a list of **[sources](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/src/sync/all_forks/sources.rs#L18-L26)**, which represent peers that Smoldot receives new block headers and GRANDPA commits from. With the received information from a given peer, it will know which blocks this peer is aware of.
 
-### Runtime service
+### Runtime service <span className="font-bold reference">[7]</span>
 
 After synchronization service, the next task is the **[runtime service](https://github.com/paritytech/smoldot/blob/76994b52cd658a4ac1dc7a08f6bd4eba702e0e87/bin/light-base/src/runtime_service.rs#L18-L55)**. Typically, this service wants to have the latest finalized downloaded runtime to provide to other services. Therefore, it needs to stay up to date with the chain.
 
@@ -487,7 +490,7 @@ Our repository is using **Next.Js** framework to build the **User-Interface** **
 
 Firstly, we must prepare the chain specification json file for the Relaychain or Parachain. We can find the chain specification of our expected network in Substrate Connect repository.
 
-```bash
+```bash showLineNumbers
     https://github.com/paritytech/substrate-connect/tree/main/packages/connect-known-chains/specs
 ```
 
@@ -495,7 +498,7 @@ Firstly, we must prepare the chain specification json file for the Relaychain or
 
 Install necessary packages such as **smoldot** , **@dedot/chaintypes** and a compatible version of **Dedot**:
     
-```bash 
+```bash showLineNumbers
     npm install smoldot dedot@0.5.0 @dedot/chaintypes
 ```
 
@@ -503,7 +506,7 @@ Install necessary packages such as **smoldot** , **@dedot/chaintypes** and a com
 
 Set up the **Substrate Connect Provider** and **Client** in a custom hook for use in your **Next.js** or **React** project: 
 
-```bash
+```bash showLineNumbers
     https://github.com/0xharryriddle/Voting-Escrow-Light-Client/blob/main/src/hooks/useApi.ts
 ```
 
@@ -513,13 +516,13 @@ Set up the **Substrate Connect Provider** and **Client** in a custom hook for us
 
 Integrate the Light Client provider across your application with an API Context setup:
 
-```bash
+```bash showLineNumbers
     https://github.com/0xharryriddle/Voting-Escrow-Light-Client/blob/main/src/providers/ApiProvider.tsx
 ```
 
 ![align=center](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F2f375d61-ff45-4a1d-9d80-b35dbf605ef2_1514x2876.png)
 
-```bash
+```bash showLineNumbers
     https://github.com/0xharryriddle/Voting-Escrow-Light-Client/tree/main/src/app
 ```
 ![align=center](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F42e11e8b-4212-4d0f-80b5-7d9b7baf210e_1514x1460.png)
@@ -528,15 +531,13 @@ Integrate the Light Client provider across your application with an API Context 
 
 Run our application with:
 
-```bash
+```bash showLineNumbers
     npm run dev
 ```
 
 If successful, you’ll see confirmation in the browser console 🎉. This confirms your Light Client is now operational within your Dapp!
 
 ![align=center](https://substackcdn.com/image/fetch/w_1456,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F4a3718a3-c5bb-44ce-9419-5d101b2497d7_1910x314.png)
-
-(https://substackcdn.com/image/fetch/f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F4a3718a3-c5bb-44ce-9419-5d101b2497d7_1910x314.png)
 
 In this context, we used the **Edge Browser** to access to our application.
 
@@ -554,19 +555,23 @@ This article is the part of **[Open Contribution Bounty](https://app.openguild.w
 
 ## References
 
-  *  **[Example Staking UI Repository - Author: CocDap](https://github.com/CocDap/staking-ui)**
+  *  **[1] CocDap, "Example Staking UI Repository https://github.com/CocDap/staking-ui**
 
-  *  **[Introducing Dedot: A delightful JavaScript client for Polkadot& Substrate-based blockchains](https://forum.polkadot.network/t/introducing-dedot-a-delightful-javascript-client-for-polkadot-substrate-based-blockchains/8956)**
+  *  **[2] Thang X. Vu, "Introducing Dedot: A delightful JavaScript client for Polkadot& Substrate-based blockchains" https://forum.polkadot.network/t/introducing-dedot-a-delightful-javascript-client-for-polkadot-substrate-based-blockchains/8956**
 
-  *  **[Polkadot Provider API: a common interface for building decentralized applications](https://forum.polkadot.network/t/polkadot-provider-api-a-common-interface-for-building-decentralized-applications/4128)**
+  *  **[3] Josep, "Polkadot Provider API: a common interface for building decentralized applications" https://forum.polkadot.network/t/polkadot-provider-api-a-common-interface-for-building-decentralized-applications/4128**
 
-  *  **[Smoldot updates threads](https://forum.polkadot.network/t/smoldot-updates-threads/4471)**
+  *  **[4] "Smoldot updates threads" https://forum.polkadot.network/t/smoldot-updates-threads/4471**
 
-  *  **[smol-dot/smoldot - Lightweight client for Substrate-based chains](https://github.com/smol-dot/smoldot)**
+  *  **[5] "smol-dot/smoldot - Lightweight client for Substrate-based chains" https://github.com/smol-dot/smoldot**
 
-  *  **[Introducing Substrate Connect: Browser-Based Light Clients for Connecting to Substrate Chains | Parity Technologies](https://www.parity.io/blog/introducing-substrate-connect)**
+  *  **[6] Parity Technologies, "Introducing Substrate Connect: Browser-Based Light Clients for Connecting to Substrate Chains | Parity Technologies" https://www.parity.io/blog/introducing-substrate-connect**
 
-  * **[Smoldot: Hello, world!](https://hackmd.io/@s_iGZLIITG6WjSgnFX0pcg/rkmmcvBno#Runtime-service)**
+  * **[7] Daan van der Plas, "Smoldot: Hello, world!" https://hackmd.io/@s_iGZLIITG6WjSgnFX0pcg/rkmmcvBno**
+
+  * **[8] Polkadot Official, "Polkadot Wiki" https://wiki.polkadot.network/docs**
+
+  * **[9] Polkadot Official, "Polkadot Specification" https://spec.polkadot.network**
 
 ## About the Author 👋🏻
 
